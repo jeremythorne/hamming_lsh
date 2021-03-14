@@ -15,11 +15,17 @@ struct HammingLSH {
 
 impl HammingLSH {
     fn new(k: u32) -> HammingLSH {
-        let hyperplanes: Vec<HammingCode> = rand::thread_rng()
+        let mut b: Vec<u32> = (0..128).collect();
+        b.shuffle(&mut rand::thread_rng());
+
+        let hyperplanes: Vec<HammingCode> = 
+            b[0..k as usize].iter().map(|a| 1 << a).collect();
+        /*
+            rand::thread_rng()
             .sample_iter(&rand::distributions::Standard)
             .take(k as usize)
             .collect();
-
+        */
         let buckets = vec!(Vec::<HammingCode>::new(); 1 << k as usize);
 
         HammingLSH {
@@ -86,8 +92,8 @@ mod tests {
 fn main() {
     println!("Hello, world!");
     const N:usize = 10000;
-    const K:u32 = 20; // we make a vec of length 1 << K
-    const F:u32 = 40;
+    const K:u32 = 7; // we make a vec of length 1 << K
+    const F:u32 = 4;
     println!("inserting {} 128 bit hamming codes into a Locality Sensitive Hash with {} hyperplanes",
              N, K);
     let v: Vec<HammingCode> = rand::thread_rng()
