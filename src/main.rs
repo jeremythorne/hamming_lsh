@@ -31,7 +31,7 @@ impl HammingLSH {
     fn hash(&self, v: HammingCode) -> u32 {
         let mut hash = 0;
         for (i, plane) in self.hyperplanes.iter().enumerate() {
-            let h = match v | plane {
+            let h = match v & plane {
                 0 => 0,
                 _ => 1
             };
