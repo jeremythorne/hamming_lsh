@@ -20,19 +20,34 @@ fn hash(planes: &[HammingCode], v: HammingCode) -> u32 {
     hash
 }
 
-struct HammingTable<T> {
-    hyperplanes: Vec<HammingCode>,
-    buckets: Vec<Vec<(HammingCode, T)>>
+fn nearest<T: Copy> (candidates:&[Option<(HammingCode, T)>], v: HammingCode) -> Option<(HammingCode, T)> {
+    let mut min = u32::MAX;
+    let mut best:Option<(HammingCode, T)> = None;
+    for n in candidates.iter() {
+        if let Some((k, i)) = n {
+            let d = hamming_distance(*k, v);
+            if d < min {
+                min = d;
+                best = Some((*k, *i));
+            }
+        }
+    }
+    best
 }
 
-impl<T:Clone> HammingTable<T> {
+struct HammingTable<T> {
+    hyperplanes: Vec<HammingCode>,
+    buckets: Vec<Vec<Option<(HammingCode, T)>>>
+}
+
+impl<T:Clone + Copy> HammingTable<T> {
     fn new(k: u32) -> HammingTable<T> {
         let mut b: Vec<u32> = (0..128).collect();
         b.shuffle(&mut rand::thread_rng());
 
         let hyperplanes: Vec<HammingCode> = 
             b[0..k as usize].iter().map(|a| 1 << a).collect();
-        let buckets = vec!(Vec::<(HammingCode, T)>::new(); 1 << k as usize);
+        let buckets = vec!(Vec::<Option<(HammingCode, T)>>::new(); 1 << k as usize);
 
         HammingTable {
             hyperplanes: hyperplanes,
@@ -46,21 +61,12 @@ impl<T:Clone> HammingTable<T> {
 
     fn insert(&mut self, k: HammingCode, v:T) {
         let h = self.hash(k);
-        self.buckets[h as usize].push((k, v));
+        self.buckets[h as usize].push(Some((k, v)));
     }
 
-    fn get(&self, k: HammingCode) -> Option<&(HammingCode, T)> {
+    fn get(&self, k: HammingCode) -> Option<(HammingCode, T)> {
         let h = self.hash(k);
-        let mut min = u32::MAX;
-        let mut best:Option<&(HammingCode, T)> = None;
-        for n in self.buckets[h as usize].iter() {
-            let d = hamming_distance(n.0, k);
-            if d < min {
-                min = d;
-                best = Some(n);
-            }
-        }
-        best
+        nearest(&self.buckets[h as usize][..], k)
     }
 }
 
@@ -90,18 +96,13 @@ impl<T:Clone> HammingLSH<T> {
     }
 
     fn get(&self, v: HammingCode) -> Option<(HammingCode, &T)> {
-        let mut min = u32::MAX;
-        let mut best:Option<(HammingCode, &T)> = None;
-        for n in self.tables.iter().map(|t| t.get(v)) {
-            if let Some((k, i)) = n {
-                let d = hamming_distance(*k, v);
-                if d < min {
-                    min = d;
-                    best = Some((*k, &self.data[*i]));
-                }
-            }
+        let c:Vec<Option<(HammingCode, usize)>> = self.tables.iter()
+            .map(|t| t.get(v))
+            .collect();
+        match nearest(&c[..], v) {
+            Some((k, i)) => Some((k, &self.data[i])),
+            _ => None
         }
-        best
     }
 }
 
@@ -133,6 +134,14 @@ mod tests {
         assert_eq!(hash(&[0b10u128], 0b1u128), 0);
         assert_eq!(hash(&[0b01u128, 0b10u128], 0b10u128), 0b10);
         assert_eq!(hash(&[1u128 << 127], 1u128 << 127), 1);
+    }
+
+    #[test]
+    fn test_nearest() {
+        assert_eq!(nearest(&[Some((0b110, 0)),
+                             Some((0b001, 1))], 0b001),
+                                Some((0b001, 1)));
+        assert_eq!(nearest::<u32>(&[None], 0b001), None);
     }
 }
 
