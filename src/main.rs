@@ -8,6 +8,18 @@ fn hamming_distance(a:HammingCode, b: HammingCode) -> u32 {
     return (a ^ b).count_ones() as u32
 }
 
+fn hash(planes: &[HammingCode], v: HammingCode) -> u32 {
+    let mut hash = 0;
+    for (i, plane) in planes.iter().enumerate() {
+        let h = match v & plane {
+            0 => 0,
+            _ => 1
+        };
+        hash |= h << i;
+    }
+    hash
+}
+
 struct HammingTable<T> {
     hyperplanes: Vec<HammingCode>,
     buckets: Vec<Vec<(HammingCode, T)>>
@@ -29,15 +41,7 @@ impl<T:Clone> HammingTable<T> {
     }
 
     fn hash(&self, v: HammingCode) -> u32 {
-        let mut hash = 0;
-        for (i, plane) in self.hyperplanes.iter().enumerate() {
-            let h = match v & plane {
-                0 => 0,
-                _ => 1
-            };
-            hash |= h << i;
-        }
-        hash
+        hash(&self.hyperplanes, v)
     }
 
     fn insert(&mut self, k: HammingCode, v:T) {
@@ -121,6 +125,14 @@ mod tests {
     fn test_hamming_distance() {
         assert_eq!(hamming_distance(0, u128::MAX), 128);
         assert_eq!(hamming_distance(0b101u128, 0b011u128), 2);
+    }
+
+    #[test]
+    fn test_hash() {
+        assert_eq!(hash(&[0b01u128], 0b1u128), 1);
+        assert_eq!(hash(&[0b10u128], 0b1u128), 0);
+        assert_eq!(hash(&[0b01u128, 0b10u128], 0b10u128), 0b10);
+        assert_eq!(hash(&[1u128 << 127], 1u128 << 127), 1);
     }
 }
 
