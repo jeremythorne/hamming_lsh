@@ -92,14 +92,18 @@ impl<T:Clone> HammingLSH<T> {
             t.insert(k, i);
         }
     }
-
-    pub fn get(&self, v: HammingCode) -> Option<(HammingCode, &T)> {
+    
+    pub fn get(&self, k: HammingCode, max_distance:Option<u32>) -> Option<(HammingCode, &T)> {
         let c:Vec<Option<(HammingCode, usize)>> = self.tables.iter()
-            .map(|t| t.get(v))
+            .map(|t| t.get(k))
             .collect();
-        match nearest(&c[..], v) {
-            Some((k, i)) => Some((k, &self.data[i])),
-            _ => None
+        let max = max_distance.unwrap_or(128);
+        let n = nearest(&c[..], k);
+        if n.is_some() && hamming_distance(n.unwrap().0, k) <= max {
+            let (k, i) = n.unwrap();
+            Some((k, &self.data[i]))
+        } else {
+            None
         }
     }
 }

@@ -21,7 +21,7 @@ fn test_lsh(k:u32, l:u32, v:&Vec<HammingCode>, f:u32) {
     let mut sum = 0;
     let mut distance = 0.0;
     for (i, a) in v_p.iter() {
-        if let Some(n) = lsh.get(*a) {
+        if let Some(n) = lsh.get(*a, None) {
             if *n.1 == *i {
                 sum += 1;
                 distance += hamming_distance(n.0, *a) as f64;
